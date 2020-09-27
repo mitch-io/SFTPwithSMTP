@@ -5,7 +5,6 @@ from datetime import datetime
 import configparser
 import sys
 
-
 # read in varibles from config file
 cfg = configparser.ConfigParser()
 cfg.read('SFTP.ini') # file name of config file - will look in working directory
@@ -35,7 +34,6 @@ status_title = ''
 # function to list local directory
 def listLocal(lDirectory):
     local_files_in_dir = []
-    global local_files_with_dir
     local_files_with_dir.clear()
 
     print('\nLocal path: ' + lDirectory)
@@ -56,7 +54,6 @@ def listLocal(lDirectory):
 
 # function to list SFTP directory
 def listSFTP(myHostname, myUsername, myPassword, rDirectory):
-    global remote_files_in_dir
     cnopts = pysftp.CnOpts()
     cnopts.hostkeys = None
     remote_files_in_dir.clear()
@@ -83,8 +80,7 @@ def listSFTP(myHostname, myUsername, myPassword, rDirectory):
 
 # function to list differences between local and remote
 def listDifferences(local_files_with_dir, remote_files_in_dir):
-    global non_match
-
+    non_match.clear() # reset the non_match list to zero
     print('\nFiles that need to be uploaded: ')
     logFile.write('\nFiles that need to be uploaded: \n')
     for i in local_files_with_dir:
@@ -99,6 +95,8 @@ def listDifferences(local_files_with_dir, remote_files_in_dir):
 def uploadToSFTP(myHostname, myUsername, myPassword, rDirectory):
     global remote_files_in_dir
     global logFile
+    global status_title
+    
     cnopts = pysftp.CnOpts()
     cnopts.hostkeys = None
     errorCount = 0
@@ -117,27 +115,31 @@ def uploadToSFTP(myHostname, myUsername, myPassword, rDirectory):
             print('\n[+] Remote file path: ' + remoteFilePath)
             logFile.write('\n[+] Remote file path: ' + remoteFilePath + '\n')
             sftp.put(localFilePath, remoteFilePath)
-        non_match.clear() # reset the non_match list to zero
+
+        # list and compare the files/differences again
+        listSFTP(myHostname, myUsername, myPassword, rDirectory)
+        listLocal(lDirectory)
         listDifferences(local_files_with_dir, remote_files_in_dir)
+        
         if len(non_match) == 0:
-            inProgress = False # stop the while loop
-            status_title = '**Upload successfully completed**' # STATUS
+            status_title = 'Upload successfully completed - ' + dt_string # STATUS
             print('\n' + status_title)
             logFile.write('\n' + status_title + '\n')
             logFile.close() # close logfile
             logFile = open('Log.txt', 'r') # re-open logfile in read mode
             sendEmail(email_user, email_password, email_to, smtp_server, smtp_port) # send email
             logFile.close() # close logfile
+            inProgress = False # stop the while loop
             sys.exit() # exit program
             
         else:
-            status_title = '**Re-trying**' # STATUS
+            status_title = 'Re-trying - ' + dt_string # STATUS
             print('\n' + status_title)
             logFile.write('\n' + status_title + '\n')
             errorCount += 1 # re-try loop
             if errorCount > 3: # change for more re-tries
                 inProgress = False # stop the while loop
-                status_title = "**Failure: File couldn't be uploaded**" # STATUS
+                status_title = "Failure: File couldn't be uploaded - " + dt_string # STATUS
                 print('\n' + status_title)
                 logFile.write('\n' + status_title + '\n')
                 logFile.close() # close logfile
@@ -148,7 +150,7 @@ def uploadToSFTP(myHostname, myUsername, myPassword, rDirectory):
                 
 # function to send emails
 def sendEmail(email_user, email_password, email_to, smtp_server, smtp_port):
-
+    
     sent_from = email_user
     subject = status_title
     body = logFile.read()
@@ -185,7 +187,7 @@ while inProgress == True:
     listLocal(lDirectory)
 
     # list the differences in files i.e. file that need to be uploaded
-    listDifferences(local_files_with_dir, remote_files_in_dir)
+    listDifferences(local_files_with_dir, remote_files_in_dir) # creates non_match list
     
     # if there are files to upload i.e non_match equals more than 0
     if len(non_match) > 0:
