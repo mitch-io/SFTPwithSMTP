@@ -10,6 +10,7 @@ cfg = configparser.ConfigParser()
 cfg.read('SFTP.ini') # file name of config file - will look in working directory
 # SFTP varibles
 myHostname = cfg.get('SFTP', 'myHostname')
+myPort = cfg.getint('SFTP', 'myPort')
 myUsername = cfg.get('SFTP', 'myUsername')
 myPassword = cfg.get('SFTP', 'myPassword')
 rDirectory = cfg.get('SFTP', 'rDirectory')
@@ -53,12 +54,12 @@ def listLocal(lDirectory):
     logFile.write('\n' + str(local_files_with_dir) + '\n')
 
 # function to list SFTP directory
-def listSFTP(myHostname, myUsername, myPassword, rDirectory):
+def listSFTP(myHostname, myPort, myUsername, myPassword, rDirectory):
     cnopts = pysftp.CnOpts()
     cnopts.hostkeys = None
     remote_files_in_dir.clear()
 
-    with pysftp.Connection(host=myHostname, username=myUsername, password=myPassword, cnopts=cnopts) as sftp:
+    with pysftp.Connection(host=myHostname, port=myPort, username=myUsername, password=myPassword, cnopts=cnopts) as sftp:
         print('\nRemote path: SFTP://' + myHostname + rDirectory)
         logFile.write('\nRemote path: SFTP://' + myHostname + rDirectory + '\n')
         print('\nConnection succesfully established... ')
@@ -92,7 +93,7 @@ def listDifferences(local_files_with_dir, remote_files_in_dir):
     logFile.write('\nTotal items: ' + str(len(non_match)) + '\n')
 
 # function to upload files to SFTP
-def uploadToSFTP(myHostname, myUsername, myPassword, rDirectory):
+def uploadToSFTP(myHostname, myPort, myUsername, myPassword, rDirectory):
     global remote_files_in_dir
     global logFile
     global status_title
@@ -101,7 +102,7 @@ def uploadToSFTP(myHostname, myUsername, myPassword, rDirectory):
     cnopts.hostkeys = None
     errorCount = 0
 
-    with pysftp.Connection(host=myHostname, username=myUsername, password=myPassword, cnopts=cnopts) as sftp:
+    with pysftp.Connection(host=myHostname, port=myPort, username=myUsername, password=myPassword, cnopts=cnopts) as sftp:
         
         print('\nConnection succesfully established... ')
         logFile.write('\nConnection succesfully established... \n')
@@ -117,7 +118,7 @@ def uploadToSFTP(myHostname, myUsername, myPassword, rDirectory):
             sftp.put(localFilePath, remoteFilePath)
 
         # list and compare the files/differences again
-        listSFTP(myHostname, myUsername, myPassword, rDirectory)
+        listSFTP(myHostname, myPort, myUsername, myPassword, rDirectory)
         listLocal(lDirectory)
         listDifferences(local_files_with_dir, remote_files_in_dir)
         
@@ -181,7 +182,7 @@ while inProgress == True:
     logFile.write('Starting.. ')
 
     # list SFTP files
-    listSFTP(myHostname, myUsername, myPassword, rDirectory)
+    listSFTP(myHostname, myPort, myUsername, myPassword, rDirectory)
     
     # list local files
     listLocal(lDirectory)
@@ -194,7 +195,7 @@ while inProgress == True:
         print('\n' + 'Uploading files')
         logFile.write('\n' + 'Uploading files' + '\n')
         print()
-        uploadToSFTP(myHostname, myUsername, myPassword, rDirectory)
+        uploadToSFTP(myHostname, myPort, myUsername, myPassword, rDirectory)
     else:
         status_title = 'No new files to upload - ' + dt_string # STATUS
         print('\n' + status_title)
